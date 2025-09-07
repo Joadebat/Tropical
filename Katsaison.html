@@ -1,0 +1,267 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ShoppingCart, X, Facebook, Instagram, Twitter, Globe } from "lucide-react";
+
+/*
+  Version professionnelle "Rabais Mache Goute 4 Saisons"
+  - Palette : tropical brun (#8B5A2B) + sable/beige
+  - Sections : header fixe, produits alimentaires (en haut), cosmétiques (centre), footer social
+  - Panier avec quantités, suppression et redirection vers Stripe Payment Link (remplacer PAYMENT_LINK)
+*/
+
+const PAYMENT_LINK = "https://buy.stripe.com/test_exemple-remplace-moi"; // ← remplace par ton Payment Link Stripe
+
+const produitsAlimentaires = [
+  { id: "a1", nom: "Jus de Goyave (1L)", prix: 4.99, image: "https://images.unsplash.com/photo-1570197788417-0e82375c9371?q=80&w=1200&auto=format&fit=crop" },
+  { id: "a2", nom: "Épices Créoles (200g)", prix: 7.99, image: "https://images.unsplash.com/photo-1526318472351-c75fcf070305?q=80&w=1200&auto=format&fit=crop" },
+  { id: "a3", nom: "Riz Haïtien (2kg)", prix: 12.5, image: "https://images.unsplash.com/photo-1514510370714-de39b3782438?q=80&w=1200&auto=format&fit=crop" },
+  { id: "a4", nom: "Pikliz (350ml)", prix: 5.0, image: "https://images.unsplash.com/photo-1626719388357-47cd1c8a54d2?q=80&w=1200&auto=format&fit=crop" },
+];
+
+const produitsCosmetiques = [
+  { id: "c1", nom: "Crème Karité 200ml", prix: 14.99, image: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=1200&auto=format&fit=crop" },
+  { id: "c2", nom: "Savon Naturel parfumé", prix: 6.5, image: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=1200&auto=format&fit=crop" },
+  { id: "c3", nom: "Huile de Coco 500ml", prix: 9.99, image: "https://images.unsplash.com/photo-1504203700685-5c7a0b6b3a8b?q=80&w=1200&auto=format&fit=crop" },
+  { id: "c4", nom: "Lotion Tropicale 250ml", prix: 11.0, image: "https://images.unsplash.com/photo-1556228720-3d1c4a6a9f2f?q=80&w=1200&auto=format&fit=crop" },
+];
+
+function formatCAD(n) {
+  return new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(n);
+}
+
+export default function RabaisMacheGouteFull() {
+  const [cart, setCart] = useState([]); // {id, nom, prix, qty, image}
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 20);
+    }
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const addToCart = (product) => {
+    setCart((c) => {
+      const found = c.find((x) => x.id === product.id);
+      if (found) return c.map((x) => (x.id === product.id ? { ...x, qty: x.qty + 1 } : x));
+      return [...c, { ...product, qty: 1 }];
+    });
+    setDrawerOpen(true);
+  };
+
+  const removeFromCart = (id) => setCart((c) => c.filter((x) => x.id !== id));
+  const changeQty = (id, qty) => setCart((c) => c.map((x) => (x.id === id ? { ...x, qty: Math.max(1, qty) } : x)));
+
+  const subtotal = useMemo(() => cart.reduce((s, p) => s + p.prix * p.qty, 0), [cart]);
+
+  // --- Small defaults you can replace (logo, social handles) ---
+  const LOGO_SVG = (
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2">
+      <rect width="24" height="24" rx="6" fill="#8B5A2B" />
+      <path d="M6 12h12" stroke="#F3E9DC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6 8h12" stroke="#F3E9DC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+
+  const SOCIAL = {
+    facebook: "https://facebook.com/rabaismachegoute",
+    instagram: "https://instagram.com/rabaismachegoute",
+    tiktok: "https://tiktok.com/@rabaismachegoute",
+  };
+
+  const goToPayment = () => {
+    if (!PAYMENT_LINK || PAYMENT_LINK.includes("remplace-moi")) {
+      alert("Le lien de paiement Stripe n'est pas configuré. Remplace PAYMENT_LINK dans le code par ton Payment Link.");
+      return;
+    }
+    window.location.href = PAYMENT_LINK;
+  };
+
+  return (
+    <div className="min-h-screen font-sans bg-gradient-to-b from-[#f3e9dc] to-[#d2b48c] text-gray-900">
+      {/* Header */}
+      <header className={`${scrolled ? "shadow-lg" : ""} fixed top-0 left-0 right-0 bg-[#8b5a2b] text-white z-40`}> 
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 md:px-8 py-3">
+          <div className="flex items-center">
+            {LOGO_SVG}
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">Rabais Mache Goute 4 Saisons</h1>
+              <div className="text-sm opacity-90">Produits alimentaires & cosmétiques caribéens</div>
+            </div>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-6 text-sm">
+            <a href="#alimentaires" className="hover:underline">Alimentaires</a>
+            <a href="#cosmetiques" className="hover:underline">Cosmétiques</a>
+            <a href="#contact" className="hover:underline">Contact</a>
+            <button className="flex items-center gap-2 bg-[#f3e9dc] text-[#8b5a2b] px-3 py-2 rounded-md" onClick={() => setDrawerOpen(true)}>
+              <ShoppingCart className="w-4 h-4" /> Panier ({cart.reduce((s, p) => s + p.qty, 0)})
+            </button>
+          </nav>
+
+          <div className="md:hidden">
+            <button className="flex items-center gap-2 bg-[#f3e9dc] text-[#8b5a2b] px-3 py-2 rounded-md" onClick={() => setDrawerOpen(true)}>
+              <ShoppingCart className="w-4 h-4" /> ({cart.reduce((s, p) => s + p.qty, 0)})
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Spacer for fixed header */}
+      <div className="h-20" />
+
+      {/* Hero */}
+      <section className="max-w-6xl mx-auto px-4 md:px-8 py-8">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
+          <div className="p-8 flex flex-col justify-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-3 text-[#8b5a2b]">Saveurs & Soins des îles, toute l'année</h2>
+            <p className="text-gray-700 mb-6">Découvrez nos spécialités caribéennes : aliments authentiques et cosmétiques naturels. Qualité, petits prix et service chaleureux.</p>
+            <div className="flex gap-3">
+              <a href="#alimentaires" className="px-4 py-2 rounded-md bg-[#8b5a2b] text-white">Voir les aliments</a>
+              <a href="#cosmetiques" className="px-4 py-2 rounded-md bg-[#f3e9dc] text-[#8b5a2b]">Voir les cosmétiques</a>
+            </div>
+          </div>
+          <div className="hidden md:block">
+            <img src="https://images.unsplash.com/photo-1505576391880-8253f9b5529f?q=80&w=1200&auto=format&fit=crop" alt="Tropical" className="w-full h-full object-cover" />
+          </div>
+        </div>
+      </section>
+
+      {/* Produits Alimentaires */}
+      <section id="alimentaires" className="max-w-6xl mx-auto px-4 md:px-8 py-8">
+        <h3 className="text-2xl font-bold text-[#5b3f2a] mb-4">Produits Alimentaires</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {produitsAlimentaires.map((p) => (
+            <Card key={p.id} className="rounded-xl overflow-hidden">
+              <img src={p.image} alt={p.nom} className="w-full h-44 object-cover" />
+              <CardContent className="p-4">
+                <h4 className="font-semibold mb-1">{p.nom}</h4>
+                <div className="flex items-center justify-between">
+                  <div className="text-[#8b5a2b] font-bold">{formatCAD(p.prix)}</div>
+                  <Button onClick={() => addToCart(p)} className="bg-[#8b5a2b] hover:bg-[#704214] text-white">Ajouter</Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* Produits Cosmétiques (centré) */}
+      <section id="cosmetiques" className="max-w-4xl mx-auto px-4 md:px-8 py-12 bg-white rounded-2xl shadow-lg -mt-4">
+        <h3 className="text-2xl font-bold text-[#5b3f2a] text-center mb-6">Produits Cosmétiques</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {produitsCosmetiques.map((p) => (
+            <Card key={p.id} className="rounded-xl overflow-hidden flex">
+              <img src={p.image} alt={p.nom} className="w-28 h-28 object-cover rounded-l-xl" />
+              <CardContent className="p-4 flex-1">
+                <h4 className="font-semibold mb-1">{p.nom}</h4>
+                <div className="flex items-center justify-between">
+                  <div className="text-[#8b5a2b] font-bold">{formatCAD(p.prix)}</div>
+                  <Button onClick={() => addToCart(p)} className="bg-[#8b5a2b] hover:bg-[#704214] text-white">Ajouter</Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* Contact / Adresse */}
+      <section id="contact" className="max-w-6xl mx-auto px-4 md:px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-[#fff8ef] p-6 rounded-xl">
+            <h4 className="font-bold text-lg mb-2">Adresse</h4>
+            <p>123 Rue Principale, Montréal, QC</p>
+            <p className="mt-3 text-sm text-gray-600">Heures : Lun–Dim 9:00 – 20:00</p>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <h4 className="font-bold text-lg mb-2">Contact</h4>
+            <form onSubmit={(e) => { e.preventDefault(); alert('Merci ! Votre message a été envoyé (exemple).'); }} className="grid gap-3">
+              <input className="border p-2 rounded" placeholder="Nom" required />
+              <input type="email" className="border p-2 rounded" placeholder="Email" required />
+              <textarea className="border p-2 rounded" placeholder="Message" rows={4} />
+              <div className="flex justify-end">
+                <Button type="submit" className="bg-[#8b5a2b]">Envoyer</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="mt-12 bg-[#8b5a2b] text-white">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div>
+            <div className="font-bold">Rabais Mache Goute 4 Saisons</div>
+            <div className="text-sm">© 2025 Tous droits réservés</div>
+          </div>
+          <div className="text-center">
+            <div>Adresse : 123 Rue Principale, Montréal, QC</div>
+            <div className="flex items-center justify-center gap-4 mt-3">
+              <a href={SOCIAL.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="hover:opacity-90">{/* Facebook svg */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white"><path d="M18 2h-3a4 4 0 0 0-4 4v3H7v4h4v8h4v-8h3l1-4h-4V6a1 1 0 0 1 1-1h3z"></path></svg>
+              </a>
+              <a href={SOCIAL.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="hover:opacity-90">{/* Instagram svg */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+              </a>
+              <a href={SOCIAL.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="hover:opacity-90">{/* TikTok svg */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white"><path d="M9 18a3 3 0 1 0 3-3v-9h3"></path><path d="M20 8v6a5 5 0 1 1-5-5"></path></svg>
+              </a>
+            </div>
+          </div>
+          <div className="text-sm opacity-90">Suivez-nous sur Facebook · Instagram · TikTok</div>
+        </div>
+      </footer>
+
+      {/* Cart Drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full sm:w-[460px] bg-white shadow-2xl flex flex-col">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-xl font-semibold">Votre panier</h3>
+              <button onClick={() => setDrawerOpen(false)} className="p-2 rounded-full hover:bg-gray-100">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 flex-1 overflow-auto space-y-3">
+              {cart.length === 0 && <p className="text-gray-500">Votre panier est vide.</p>}
+
+              {cart.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 border rounded-xl p-3">
+                  <img src={item.image} alt={item.nom} className="w-16 h-16 object-cover rounded-lg" />
+                  <div className="flex-1">
+                    <div className="font-medium">{item.nom}</div>
+                    <div className="text-sm text-gray-600">{formatCAD(item.prix)}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <button className="px-2 py-1 border rounded" onClick={() => changeQty(item.id, item.qty - 1)}>-</button>
+                      <div className="px-3">{item.qty}</div>
+                      <button className="px-2 py-1 border rounded" onClick={() => changeQty(item.id, item.qty + 1)}>+</button>
+                    </div>
+                  </div>
+                  <button className="text-sm text-red-500" onClick={() => removeFromCart(item.id)}>Supprimer</button>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 border-t space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Sous-total</span>
+                <span className="font-semibold">{formatCAD(subtotal)}</span>
+              </div>
+              <div className="flex gap-2">
+                <Button className="flex-1 bg-[#8b5a2b]" disabled={cart.length === 0} onClick={goToPayment}>Payer maintenant</Button>
+                <Button variant="secondary" className="flex-1" onClick={() => { setCart([]); alert('Panier vidé (exemple).'); }}>Vider</Button>
+              </div>
+              <p className="text-xs text-gray-500">Paiement sécurisé via Stripe. Taxes & livraison calculées à la caisse.</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
